@@ -20,8 +20,10 @@ public final class WebGame extends ShatteredPixelDungeon {
     public WebGame(){super(new WebPlatform());}
     @Override public void create(){
         Gdx.files=new BrowserFiles(Gdx.files,new WebSaves());
-        if(SPDSettings.intro()&&GamesInProgress.gameExists(1))SPDSettings.intro(false);
-        if(!Gdx.app.getPreferences("settings.xml").contains("language"))SPDSettings.language(Languages.CHI_SMPL);
+        WebDefaults.preferences(Gdx.app.getPreferences("settings.xml"),WebVersion.CODE);
+        // Messages can initialize before create(); reload bundles after binding browser preferences.
+        com.shatteredpixel.shatteredpixeldungeon.messages.Messages.setup(SPDSettings.language());
+        WebDefaults.unlocks();
         super.create();
         exposeSave(()->{try{if(Dungeon.hero!=null&&Dungeon.hero.ready)Dungeon.saveAll();WebSaves.flush();}catch(Exception error){reportException(error);}});
     }

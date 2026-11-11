@@ -99,6 +99,11 @@ credits and supply corresponding modified source with hosted browser code.
 URL: http://117.72.188.108:8082/ (no login; browser-local progress).
 The default entry shows only the game, filling the viewport. Save management,
 source and credits remain available at http://117.72.188.108:8082/?manage=1 .
+The Web adapter defaults new profiles to Simplified Chinese and skips the
+opening tutorial. It explicitly refreshes message bundles after binding saved
+preferences, preserving an existing language selection. Global character unlock
+badges and all alchemy guide pages are added through official APIs at startup;
+these travel with the exported profile. Run files and crafting costs are untouched.
 The earlier community sample remains on port 8081. Static hosting uses native
 Node.js under systemd, not Docker. No game simulation runs on the VPS.
 
