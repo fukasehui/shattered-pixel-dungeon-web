@@ -24,6 +24,10 @@ serialization are retained. Narrowly audited compatibility changes are required:
 Browser render and pause callbacks enter TeaVM Java threads. A frame gate
 prevents overlapping draws while official scene teardown waits for actor work.
 This preserves official GameScene shutdown rather than bypassing its waits.
+6. GameScene/Actor browser shutdown wakes parked actor/sprite waits and exits
+   cooperatively, clearing processing and notifying teardown. TeaVM's interrupted
+   wait path otherwise loses monitor ownership. Native interrupt behavior stays
+   unchanged; browser teardown still waits before destroying the scene.
 
 The Web target uses the open-source libGDX TeaVM backend 1.5.6. The pinned
 TeaVM static-initializer compatibility workaround was informed by broqdev's

@@ -817,7 +817,8 @@ public class GameScene extends PixelScene {
 	public static void endActorThread(){
 		if (actorThread != null && actorThread.isAlive()){
 			Actor.keepActorThreadAlive = false;
-			actorThread.interrupt();
+			if (com.badlogic.gdx.Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) Actor.stopCooperatively(actorThread);
+			else actorThread.interrupt();
 		}
 	}
 
@@ -826,7 +827,10 @@ public class GameScene extends PixelScene {
 			return true;
 		}
 		synchronized (actorThread) {
-			if (interrupt) actorThread.interrupt();
+			if (interrupt) {
+				if (com.badlogic.gdx.Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) Actor.stopCooperatively(actorThread);
+				else actorThread.interrupt();
+			}
 			try {
 				actorThread.wait(msToWait);
 			} catch (InterruptedException e) {

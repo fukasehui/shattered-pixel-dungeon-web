@@ -246,8 +246,19 @@ public abstract class Actor implements Bundlable {
 	}
 	
 	public static boolean keepActorThreadAlive = true;
+
+	// Browser teardown wakes cooperative waits; TeaVM interrupt/wait can lose monitor ownership.
+	public static void stopCooperatively(Thread thread) {
+		keepActorThreadAlive = false;
+		Actor acting = current;
+		if (acting instanceof Char && ((Char)acting).sprite != null) {
+			synchronized (((Char)acting).sprite) { ((Char)acting).sprite.notifyAll(); }
+		}
+		synchronized (thread) { thread.notifyAll(); }
+	}
 	
 	public static void process() {
+		boolean browser = com.badlogic.gdx.Gdx.app != null && com.badlogic.gdx.Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL;
 		
 		boolean doNext;
 		boolean interrupted = false;
@@ -291,7 +302,7 @@ public abstract class Actor implements Bundlable {
 					}
 				}
 				
-				interrupted = interrupted || Thread.interrupted();
+				interrupted = interrupted || Thread.interrupted() || (browser && !keepActorThreadAlive);
 				
 				if (interrupted){
 					doNext = false;
@@ -321,7 +332,7 @@ public abstract class Actor implements Bundlable {
 					Thread.currentThread().notify();
 					
 					try {
-						Thread.currentThread().wait();
+						if (!browser || keepActorThreadAlive) Thread.currentThread().wait();
 					} catch (InterruptedException e) {
 						interrupted = true;
 					}
@@ -329,6 +340,10 @@ public abstract class Actor implements Bundlable {
 			}
 
 		} while (keepActorThreadAlive);
+		if (browser) {
+			current = null;
+			synchronized (Thread.currentThread()) { Thread.currentThread().notifyAll(); }
+		}
 	}
 	
 	public static void add( Actor actor ) {

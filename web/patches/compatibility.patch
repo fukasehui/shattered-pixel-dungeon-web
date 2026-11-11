@@ -139,3 +139,82 @@ index 3f0d2ea..219c74b 100644
  	
  	//null means we have loaded info and it is empty, no entry means unknown.
  	private static HashMap<Integer, Info> slotStates = new HashMap<>();
+diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/Actor.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/Actor.java
+index 346718f..8cfcb0b 100644
+--- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/Actor.java
++++ b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/Actor.java
+@@ -246,8 +246,19 @@ public abstract class Actor implements Bundlable {
+ 	}
+ 	
+ 	public static boolean keepActorThreadAlive = true;
++
++	// Browser teardown wakes cooperative waits; TeaVM interrupt/wait can lose monitor ownership.
++	public static void stopCooperatively(Thread thread) {
++		keepActorThreadAlive = false;
++		Actor acting = current;
++		if (acting instanceof Char && ((Char)acting).sprite != null) {
++			synchronized (((Char)acting).sprite) { ((Char)acting).sprite.notifyAll(); }
++		}
++		synchronized (thread) { thread.notifyAll(); }
++	}
+ 	
+ 	public static void process() {
++		boolean browser = com.badlogic.gdx.Gdx.app != null && com.badlogic.gdx.Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL;
+ 		
+ 		boolean doNext;
+ 		boolean interrupted = false;
+@@ -291,7 +302,7 @@ public abstract class Actor implements Bundlable {
+ 					}
+ 				}
+ 				
+-				interrupted = interrupted || Thread.interrupted();
++				interrupted = interrupted || Thread.interrupted() || (browser && !keepActorThreadAlive);
+ 				
+ 				if (interrupted){
+ 					doNext = false;
+@@ -321,7 +332,7 @@ public abstract class Actor implements Bundlable {
+ 					Thread.currentThread().notify();
+ 					
+ 					try {
+-						Thread.currentThread().wait();
++						if (!browser || keepActorThreadAlive) Thread.currentThread().wait();
+ 					} catch (InterruptedException e) {
+ 						interrupted = true;
+ 					}
+@@ -329,6 +340,10 @@ public abstract class Actor implements Bundlable {
+ 			}
+ 
+ 		} while (keepActorThreadAlive);
++		if (browser) {
++			current = null;
++			synchronized (Thread.currentThread()) { Thread.currentThread().notifyAll(); }
++		}
+ 	}
+ 	
+ 	public static void add( Actor actor ) {
+diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java
+index 179e9e8..cf1bdcf 100644
+--- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java
++++ b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java
+@@ -817,7 +817,8 @@ public class GameScene extends PixelScene {
+ 	public static void endActorThread(){
+ 		if (actorThread != null && actorThread.isAlive()){
+ 			Actor.keepActorThreadAlive = false;
+-			actorThread.interrupt();
++			if (com.badlogic.gdx.Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) Actor.stopCooperatively(actorThread);
++			else actorThread.interrupt();
+ 		}
+ 	}
+ 
+@@ -826,7 +827,10 @@ public class GameScene extends PixelScene {
+ 			return true;
+ 		}
+ 		synchronized (actorThread) {
+-			if (interrupt) actorThread.interrupt();
++			if (interrupt) {
++				if (com.badlogic.gdx.Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) Actor.stopCooperatively(actorThread);
++				else actorThread.interrupt();
++			}
+ 			try {
+ 				actorThread.wait(msToWait);
+ 			} catch (InterruptedException e) {
