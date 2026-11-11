@@ -36,6 +36,11 @@ public abstract class PlatformSupport {
 	
 	public abstract void updateDisplaySize();
 
+	/** Optional platform checkpoint after the official level-entry save completes. */
+	public void onLevelEntry(String key, String gameFile, String levelFile, int depth) { }
+	/** Return true when the platform retains the run for a deferred death decision. */
+	public boolean onRunDeath() { return false; }
+
 	public boolean supportsFullScreen(){
 		return true; //default
 	}

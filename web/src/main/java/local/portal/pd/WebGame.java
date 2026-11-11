@@ -25,7 +25,7 @@ public final class WebGame extends ShatteredPixelDungeon {
         com.shatteredpixel.shatteredpixeldungeon.messages.Messages.setup(SPDSettings.language());
         WebDefaults.unlocks();
         super.create();
-        exposeSave(()->{try{if(Dungeon.hero!=null&&Dungeon.hero.ready)Dungeon.saveAll();WebSaves.flush();}catch(Exception error){reportException(error);}});
+        exposeSave(()->{try{if(Dungeon.hero!=null&&Dungeon.hero.isAlive()&&Dungeon.hero.ready)Dungeon.saveAll();WebSaves.flush();}catch(Exception error){reportException(error);}});
     }
     @Override public void render(){
         // WebApplication invokes render directly from JavaScript. A Java Thread
@@ -34,7 +34,7 @@ public final class WebGame extends ShatteredPixelDungeon {
     }
     private void renderFrame(){
         super.render();
-        if(Game.scene() instanceof GameScene&&Dungeon.hero!=null&&Dungeon.hero.ready){
+        if(Game.scene() instanceof GameScene&&Dungeon.hero!=null&&Dungeon.hero.isAlive()&&Dungeon.hero.ready){
             WebSaves.acceptUpgrade();
             long now=System.currentTimeMillis();
             if(now>=nextSave){nextSave=now+3000;try{Dungeon.saveAll();}catch(Exception error){reportException(error);}}

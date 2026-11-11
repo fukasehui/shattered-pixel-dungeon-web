@@ -126,6 +126,36 @@ index 56b5d50..bf74e62 100644
  	}
  
  	public static boolean hasHardKeyboard(){
+diff --git a/SPD-classes/src/main/java/com/watabou/utils/PlatformSupport.java b/SPD-classes/src/main/java/com/watabou/utils/PlatformSupport.java
+index 863b15b..33977ba 100644
+--- a/SPD-classes/src/main/java/com/watabou/utils/PlatformSupport.java
++++ b/SPD-classes/src/main/java/com/watabou/utils/PlatformSupport.java
+@@ -36,6 +36,11 @@ public abstract class PlatformSupport {
+ 	
+ 	public abstract void updateDisplaySize();
+ 
++	/** Optional platform checkpoint after the official level-entry save completes. */
++	public void onLevelEntry(String key, String gameFile, String levelFile, int depth) { }
++	/** Return true when the platform retains the run for a deferred death decision. */
++	public boolean onRunDeath() { return false; }
++
+ 	public boolean supportsFullScreen(){
+ 		return true; //default
+ 	}
+diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java
+index 1c02505..3b0f41f 100644
+--- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java
++++ b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java
+@@ -510,6 +510,9 @@ public class Dungeon {
+ 		observe();
+ 		try {
+ 			saveAll();
++			if (Game.platform != null) Game.platform.onLevelEntry(seed+":"+depth+":"+branch,
++					GamesInProgress.gameFile(GamesInProgress.curSlot),
++					GamesInProgress.depthFile(GamesInProgress.curSlot, depth, branch), depth);
+ 		} catch (IOException e) {
+ 			ShatteredPixelDungeon.reportException(e);
+ 			/*This only catches IO errors. Yes, this means things can go wrong, and they can go wrong catastrophically.
 diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java
 index 3f0d2ea..219c74b 100644
 --- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java
@@ -192,6 +222,21 @@ index 346718f..8cfcb0b 100644
  	}
  	
  	public static void add( Actor actor ) {
+diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java
+index bfbdffc..6857fac 100644
+--- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java
++++ b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java
+@@ -2305,7 +2305,9 @@ public class Hero extends Char {
+ 			((Hero.Doom)cause).onDeath();
+ 		}
+ 
+-		Dungeon.deleteGame( GamesInProgress.curSlot, true );
++		if (Game.platform == null || !Game.platform.onRunDeath()) {
++			Dungeon.deleteGame( GamesInProgress.curSlot, true );
++		}
+ 	}
+ 
+ 	//effectively cache this buff to prevent having to call buff(...) a bunch.
 diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java
 index 179e9e8..cf1bdcf 100644
 --- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/GameScene.java

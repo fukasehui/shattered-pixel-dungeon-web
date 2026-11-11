@@ -16,4 +16,8 @@ public final class WebSaves implements SaveAccess {
     @Override public String[] paths(){JSONArray array=new JSONArray(pathsJson());String[] out=new String[array.length()];for(int i=0;i<out.length;i++)out[i]=array.getString(i);return out;}
     @JSBody(script="window.portalStore.flush();") public static native void flush();
     @JSBody(script="if(window.portalStore.migrationPending) window.portalStore.acceptUpgrade();") public static native void acceptUpgrade();
+    @JSBody(params={"key","gameFile","levelFile","depth"},script="try{window.portalStore.captureFloor(key,gameFile,levelFile,depth);}catch(e){if(parent.portalSaveWarning)parent.portalSaveWarning('本层检查点保存失败：'+e.message);}")
+    public static native void captureFloor(String key,String gameFile,String levelFile,int depth);
+    @JSBody(script="try{window.portalStore.markDeath();}catch(e){if(parent.portalSaveWarning)parent.portalSaveWarning('死亡状态保存失败，请先导出：'+e.message);}if(parent.portalShowDeath)parent.portalShowDeath();")
+    public static native void markDeath();
 }

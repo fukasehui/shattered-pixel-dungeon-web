@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public final class WebPlatform extends PlatformSupport {
+    @Override public void onLevelEntry(String key,String gameFile,String levelFile,int depth){WebSaves.captureFloor(key,gameFile,levelFile,depth);}
+    @Override public boolean onRunDeath(){WebSaves.markDeath();return true;}
     private FreeTypeFontGenerator latin,asian;
     @Override public void updateDisplaySize(){
         int w=Gdx.graphics.getWidth(),h=Gdx.graphics.getHeight();

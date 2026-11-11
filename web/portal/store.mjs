@@ -21,6 +21,14 @@ function validate(profile) {
   const entries = Object.entries(profile.files);
   if (entries.length > 200) throw new Error('Too many save files');
   for (const [path, data] of entries) { pathCheck(path); base64Check(data); }
+  if (profile.dead !== undefined && typeof profile.dead !== 'boolean') throw new Error('Invalid death state');
+  if (profile.floorCheckpoint) {
+    const cp=profile.floorCheckpoint;
+    if(typeof cp.key!=='string'||cp.key.length>160||!Number.isInteger(cp.code)||!Number.isInteger(cp.depth)
+      ||typeof cp.levelPath!=='string'||!/^game1\/depth[^/]*\.dat$/.test(cp.levelPath)
+      ||!cp.files||Object.keys(cp.files).length!==2||!cp.files['game1/game.dat']||!cp.files[cp.levelPath])throw new Error('Invalid floor checkpoint');
+    for(const [p,b] of Object.entries(cp.files)){pathCheck(p);if(p!=='game1/game.dat'&&p!==cp.levelPath)throw new Error('Invalid checkpoint path');base64Check(b);}
+  }
   if (JSON.stringify(profile).length > MAX_PROFILE) throw new Error('Save profile too large');
   return clone(profile);
 }
@@ -36,13 +44,19 @@ export function createStore(storage, engine) {
   let retired = false;
   let upgradeBackedUp = false;
   let canWrite = () => true;
+  let activeFloorKey=profile.dead?profile.deathFloorKey:null;
+  const mutable=()=>{if(retired||!canWrite())throw new Error('当前页面已停止写入，请重新打开游戏。');};
+  function replaceAndRetire(next){mutable();const raw=JSON.stringify(validate(next));storage.setItem(CURRENT_KEY,raw);profile=next;dirty=false;retired=true;}
   const store = {
+    get dead(){return !!profile.dead;},
+    get checkpointDepth(){return profile.floorCheckpoint?.depth??null;},
+    get canRetry(){return !!profile.floorCheckpoint&&profile.floorCheckpoint.key===activeFloorKey&&profile.floorCheckpoint.code<=engine.code;},
     get migrationPending() { return migrationPending; },
     read(path) { pathCheck(path); return profile.files[path] ?? null; },
-    write(path, value) { if(retired)return;pathCheck(path); base64Check(value); profile.files[path] = value; dirty = true; },
-    remove(path) { if(retired)return;pathCheck(path); delete profile.files[path]; dirty = true; },
+    write(path, value) { if(retired||profile.dead&&path.startsWith('game1/'))return;pathCheck(path); base64Check(value); profile.files[path] = value;if(path==='game1/game.dat'&&value.length<=4)delete profile.floorCheckpoint; dirty = true; },
+    remove(path) { if(retired||profile.dead&&path.startsWith('game1/'))return;pathCheck(path); delete profile.files[path];if(path==='game1/game.dat'&&!profile.files[path+'.spdtmp'])delete profile.floorCheckpoint; dirty = true; },
     paths() { return Object.keys(profile.files); },
-    move(from, to) { if(retired)return;pathCheck(from); pathCheck(to); if (!(from in profile.files)) throw new Error('Missing source file'); profile.files[to] = profile.files[from]; delete profile.files[from]; dirty = true; },
+    move(from, to) { if(retired||profile.dead&&to.startsWith('game1/'))return;pathCheck(from); pathCheck(to); if (!(from in profile.files)) throw new Error('Missing source file'); profile.files[to] = profile.files[from]; delete profile.files[from]; dirty = true; },
     acceptUpgrade() { migrationPending = false; dirty = true; },
     setWriteGuard(guard) { canWrite = guard; },
     flush() {
@@ -57,6 +71,30 @@ export function createStore(storage, engine) {
       profile = next; dirty = false; return true;
     },
     export() { return clone(profile); },
+    captureFloor(key,gamePath,levelPath,depth){
+      mutable();activeFloorKey=key;
+      if(profile.dead)return false;
+      if(profile.floorCheckpoint?.key===key)return true;
+      if(!profile.files[gamePath]||!profile.files[levelPath])throw new Error('本层存档尚未写入，无法建立检查点。');
+      const previous=profile,wasDirty=dirty;
+      const next={...profile,floorCheckpoint:{key,code:engine.code,depth,levelPath,files:{[gamePath]:profile.files[gamePath],[levelPath]:profile.files[levelPath]}}};
+      validate(next);profile=next;dirty=true;
+      try{store.flush();return true;}catch(error){profile=previous;dirty=wasDirty;throw error;}
+    },
+    markDeath(){
+      mutable();profile.dead=true;profile.deathFloorKey=activeFloorKey;dirty=true;
+      // A real death also establishes that the native engine restored the run.
+      migrationPending=false;store.flush();
+    },
+    retryFloor(){
+      if(!store.canRetry)throw new Error('没有可用的本层检查点，请先导出存档。');
+      const next={...clone(profile),files:{...profile.files,...profile.floorCheckpoint.files},dead:false};
+      delete next.deathFloorKey;replaceAndRetire(next);
+    },
+    endRun(){
+      const next=clone(profile);for(const p of Object.keys(next.files))if(p.startsWith('game1/'))delete next.files[p];
+      delete next.floorCheckpoint;delete next.deathFloorKey;delete next.dead;replaceAndRetire(next);
+    },
     install(input) {
       const imported = validate(input);
       if (imported.engine.code > engine.code) throw new Error('Cannot import a newer engine save');

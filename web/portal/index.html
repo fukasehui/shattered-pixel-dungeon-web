@@ -4,6 +4,8 @@
 <header><strong>像素地牢</strong><span id="version" class="meta">读取版本…</span><button id="export">导出存档</button><button id="import">导入存档</button><button id="restore">升级前备份</button><button id="recover">替换前备份</button><a href="source.zip">源码</a></header>
 <div id="message" role="status"></div><iframe id="game" title="破碎的像素地牢网页版" allow="autoplay; fullscreen"></iframe>
 <footer>非官方网页移植 · 以官方开源稳定版为基线 · 一个当前存档，保存在此浏览器。原作 <a href="https://shatteredpixel.com/shatteredpd/">Evan Debenham</a> / Watabou · <a href="LICENSE.txt">GPL</a></footer><input type="file" id="file" accept="application/json,.json">
+<style>dialog{max-width:min(430px,90vw);padding:24px;background:#20261c;color:#e4e9dc;border:2px solid #697857;border-radius:8px}dialog::backdrop{background:#000b}dialog h2{margin:0 0 12px;font-size:21px}dialog p{line-height:1.7}dialog .choices{display:flex;gap:10px;flex-wrap:wrap}dialog button{padding:10px 14px}dialog button:disabled{opacity:.4;cursor:default}#death-error{color:#f5c787}</style>
+<dialog id="death"><h2>本次冒险已结束</h2><p id="death-description"></p><p>存档已保留。选择结束本局后，才会清除本局进度。</p><p id="death-error" role="status"></p><div class="choices"><button id="retry-floor">从本层开头重试</button><button id="death-export">导出存档</button><button id="end-run">结束本局</button></div></dialog>
 <script type="module">
 import {createStore,importLegacy,acquireWriter,CURRENT_KEY,UPGRADE_KEY,RECOVERY_KEY} from './store.mjs';
 const management=new URLSearchParams(location.search).get('manage')==='1';
@@ -11,6 +13,18 @@ document.documentElement.classList.toggle('management',management);
 const frame=document.querySelector('#game'),message=document.querySelector('#message');
 const show=text=>{message.textContent=text;message.style.display='block';};
 let store,lease,version;
+const death=document.querySelector('#death'),deathError=document.querySelector('#death-error');
+death.addEventListener('cancel',event=>event.preventDefault());
+function showDeath(){
+  document.querySelector('#retry-floor').disabled=!store?.canRetry;
+  document.querySelector('#death-description').textContent=store?.canRetry?'可以回到第 '+store.checkpointDepth+' 层进入时的状态，恢复当时的生命、位置、背包和地图。':'当前没有可用的本层检查点，可以先导出存档保留进度。';
+  if(!death.open)death.showModal();
+}
+window.portalShowDeath=showDeath;
+window.portalSaveWarning=text=>{deathError.textContent=text;if(!death.open)show(text);};
+document.querySelector('#retry-floor').onclick=()=>{try{store.retryFloor();location.reload();}catch(error){deathError.textContent=error.message;}};
+document.querySelector('#end-run').onclick=()=>{try{store.endRun();location.reload();}catch(error){deathError.textContent=error.message;}};
+document.querySelector('#death-export').onclick=()=>document.querySelector('#export').click();
 function download(value,name){const url=URL.createObjectURL(new Blob([typeof value==='string'?value:JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 document.querySelector('#export').onclick=()=>{let warning;try{frame.contentWindow?.portalSaveNow?.();store?.flush();}catch(error){warning=error.message;}try{download(store?store.export():localStorage.getItem(CURRENT_KEY)||'{}','pixel-dungeon-save.json');if(warning)show('本地保存失败，已导出内存中的进度：'+warning);}catch(error){show(error.message);}};
 document.querySelector('#import').onclick=()=>document.querySelector('#file').click();
@@ -43,7 +57,7 @@ try{
   store=createStore(localStorage,version);
   store.setWriteGuard(lease.renew);window.portalStore=store;
   if(management&&store.migrationPending)show('发现旧版进度：请进入并继续游戏。验证可读取后才会保存升级结果，旧档会保留为恢复备份。');
-  frame.src='./play/';
+  if(store.dead)showDeath();else frame.src='./play/';
   window.addEventListener('pagehide',()=>{try{frame.contentWindow?.portalSaveNow?.();store.flush();}catch{}lease.release();});
   window.addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='game-error')show('游戏运行错误：'+event.data.message+'。可先导出存档保留进度。');});
 }catch(error){show(error.message);}

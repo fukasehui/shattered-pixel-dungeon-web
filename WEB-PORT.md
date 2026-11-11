@@ -70,6 +70,21 @@ may require additional compatibility work; they are never silently discarded.
 
 ## Saves and rollback
 
+Browser death handling keeps the official native Bundle files. After
+Dungeon.switchLevel/saveAll, the Web platform snapshots game.dat and the current
+depth/branch file. Other floor files remain in the current profile. Regular saves
+and reloads on the same floor do not replace this entry checkpoint; entering
+another floor updates it. The first load of an older existing run establishes
+a checkpoint at its resumed position, since its historical floor entry is unavailable.
+
+Hero.reallyDie delegates its final deletion to an optional platform hook. Native
+platforms retain original deletion. The browser persists a pending death decision
+and offers retry floor, export, or end run. Retry restores both checkpoint files,
+retaining other floors and global settings. Only end run removes the active run.
+Reload/import of a dead profile shows the same decision before loading gameplay.
+Export/import includes the checkpoint and death state. This remains browser-local
+storage, without user accounts or cross-device server synchronization.
+
 One profile is stored under `portal-pd.current.v1` at a stable browser origin.
 Native files remain byte-identical Bundle payloads, encoded as base64 in an
 atomic localStorage snapshot. Browser preferences use the same profile. Save
@@ -104,14 +119,14 @@ official opening tutorial. It explicitly refreshes message bundles after binding
 preferences, preserving an existing language selection. Global character unlock
 badges and all alchemy guide pages are added through official APIs at startup;
 these travel with the exported profile. Run files and crafting costs are untouched.
-The earlier community sample remains on port 8081. Static hosting uses native
+The earlier community sample on port 8081 is currently stopped. Static hosting uses native
 Node.js under systemd, not Docker. No game simulation runs on the VPS.
 
     systemctl status pixel-dungeon-official
     systemctl restart pixel-dungeon-official
     journalctl -u pixel-dungeon-official -n 100 --no-pager
 
-Release root: `/srv/pixel-dungeon-official/releases/4.0.2-r1`.
+Release directories: `/srv/pixel-dungeon-official/releases/`.
 `/srv/pixel-dungeon-official/current` selects the active release. For a future
 validated build, upload a new complete release directory containing `public`,
 `server.mjs`, and `deploy.sh`, then run its deploy script with the new release ID.

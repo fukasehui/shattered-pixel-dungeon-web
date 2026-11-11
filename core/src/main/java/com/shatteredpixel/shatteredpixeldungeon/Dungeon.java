@@ -510,6 +510,9 @@ public class Dungeon {
 		observe();
 		try {
 			saveAll();
+			if (Game.platform != null) Game.platform.onLevelEntry(seed+":"+depth+":"+branch,
+					GamesInProgress.gameFile(GamesInProgress.curSlot),
+					GamesInProgress.depthFile(GamesInProgress.curSlot, depth, branch), depth);
 		} catch (IOException e) {
 			ShatteredPixelDungeon.reportException(e);
 			/*This only catches IO errors. Yes, this means things can go wrong, and they can go wrong catastrophically.
