@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>%TITLE%</title>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}canvas{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none;outline:none}</style>
+</head><body><canvas id="canvas" tabindex="0"></canvas>
+<script>
+window.portalStore=parent.portalStore;
+window.addEventListener('error',event=>parent.postMessage({type:'game-error',message:event.message},location.origin));
+window.addEventListener('pointerdown',()=>document.getElementById('canvas').focus());
+document.addEventListener('contextmenu',event=>event.preventDefault());
+window.addEventListener('load',()=>{ %MODE% });
+</script>
+%JS_SCRIPT%
+</body></html>

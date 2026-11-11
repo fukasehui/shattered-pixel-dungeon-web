@@ -1,0 +1,52 @@
+plugins { id 'java' }
+def officialBuild = file('../build.gradle').getText('UTF-8')
+def officialString = { name ->
+    def match = officialBuild =~ /${name}\s*=\s*'([^']+)'/
+    if (!match.find()) throw new GradleException("Official build property missing: $name")
+    match.group(1)
+}
+def codeMatch = officialBuild =~ /appVersionCode\s*=\s*(\d+)/
+if (!codeMatch.find()) throw new GradleException('Official version code missing')
+def officialCode = codeMatch.group(1).toInteger()
+def compatibility = officialBuild =~ /appJavaCompatibility\s*=\s*JavaVersion.VERSION_(\d+)/
+if (!compatibility.find()) throw new GradleException('Official Java compatibility missing')
+def javaLevel = JavaVersion.toVersion(compatibility.group(1))
+allprojects {
+    ext.appVersionName = officialString('appVersionName')
+    ext.appVersionCode = officialCode
+    ext.appJavaCompatibility = javaLevel
+    ext.gdxVersion = officialString('gdxVersion')
+    ext.gdxControllersVersion = officialString('gdxControllersVersion')
+    repositories { mavenCentral(); maven { url 'https://central.sonatype.com/repository/maven-snapshots/' } }
+}
+java.sourceCompatibility = java.targetCompatibility = appJavaCompatibility
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+    implementation 'com.github.xpenatan.gdx-teavm:backend-web:1.5.6'
+    implementation 'com.github.xpenatan.gdx-teavm:gdx-freetype-teavm:1.5.6'
+    implementation 'com.github.xpenatan.gdx-teavm:gdx-controllers-teavm:1.5.6'
+    implementation 'org.json:json:20170516'
+    testImplementation 'junit:junit:4.13.2'
+}
+def generated = layout.buildDirectory.dir('generated/web-version')
+sourceSets.main.java.srcDir(generated)
+tasks.register('generateWebVersion') {
+    inputs.property('gameName', appVersionName)
+    inputs.property('gameCode', appVersionCode)
+    outputs.dir(generated)
+    doLast {
+        def file = generated.get().file('local/portal/pd/WebVersion.java').asFile
+        file.parentFile.mkdirs()
+        file.setText("package local.portal.pd; public final class WebVersion { public static final String NAME = \"${appVersionName}\"; public static final int CODE = ${appVersionCode}; }", 'UTF-8')
+    }
+}
+compileJava.dependsOn generateWebVersion
+tasks.register('buildWeb', JavaExec) {
+    dependsOn classes
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'local.portal.pd.BuildWeb'
+    workingDir = file('..')
+    maxHeapSize = '4096m'
+}

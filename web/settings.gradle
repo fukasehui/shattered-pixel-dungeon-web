@@ -1,0 +1,5 @@
+rootProject.name = 'official-pixel-dungeon-web'
+include ':SPD-classes', ':core', ':services'
+project(':SPD-classes').projectDir = file('../SPD-classes')
+project(':core').projectDir = file('../core')
+project(':services').projectDir = file('../services')

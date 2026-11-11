@@ -1,0 +1,15 @@
+import fs from 'node:fs';import path from 'node:path';import zlib from 'node:zlib';import crypto from 'node:crypto';import {fileURLToPath} from 'node:url';import {execFileSync} from 'node:child_process';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..'),target=path.join(root,'web/build/public');
+fs.mkdirSync(path.join(target,'play'),{recursive:true});
+fs.cpSync(path.join(root,'web/build/dist/webapp'),path.join(target,'play'),{recursive:true,filter:f=>!f.includes('WEB-INF')&&!f.endsWith('.map')});
+fs.cpSync(path.join(root,'web/portal'),target,{recursive:true});fs.copyFileSync(path.join(root,'LICENSE.txt'),path.join(target,'LICENSE.txt'));
+const preload=path.join(target,'play/assets/preload.txt');fs.writeFileSync(preload,fs.readFileSync(preload,'utf8').split(/\r?\n/).filter(l=>!l.includes('/WEB-INF/')).join('\n'));
+const names=execFileSync('git',['-c','core.quotepath=false','ls-files','-c','-o','--exclude-standard'],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(f=>f&&!f.startsWith('.web-update/')&&fs.existsSync(path.join(root,f)));
+const list=path.join(root,'web/build/source-files.txt');fs.writeFileSync(list,names.map(n=>JSON.stringify(n)).join('\n'));
+execFileSync(path.join(process.env.JAVA_HOME,'bin',process.platform==='win32'?'jar.exe':'jar'),['--create','--no-manifest','--file',path.join(target,'source.zip'),'@'+list],{cwd:root,stdio:'inherit'});
+const version=JSON.parse(fs.readFileSync(path.join(target,'play/version.json')));version.sourceArchiveSHA256=crypto.createHash('sha256').update(fs.readFileSync(path.join(target,'source.zip'))).digest('hex');
+const entry=fs.readFileSync(path.join(root,'web/src/main/resources/webapp/index.html'),'utf8').replace('%TITLE%',`Pixel Dungeon ${version.version} · Official-source Web Port`).replace('%MODE%','main()').replace('%JS_SCRIPT%','<script type="text/javascript" charset="utf-8" src="dungeon.js"></script>');
+fs.writeFileSync(path.join(target,'play/index.html'),entry);
+fs.writeFileSync(path.join(target,'play/version.json'),JSON.stringify(version,null,2)+'\n');
+function gzip(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){const f=path.join(dir,e.name);if(e.isDirectory())gzip(f);else if(/\.(js|mjs|html|json|txt|wasm)$/.test(f))fs.writeFileSync(f+'.gz',zlib.gzipSync(fs.readFileSync(f),{level:9}));}}gzip(target);
+console.log(JSON.stringify({output:target,...version}));

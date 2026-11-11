@@ -1,0 +1,47 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>像素地牢 · 官方源码网页版</title>
+<style>:root{color-scheme:dark;font:14px system-ui,"Microsoft YaHei",sans-serif;background:#10140f;color:#dae3cb}*{box-sizing:border-box}body{margin:0}header{min-height:48px;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #35402d;flex-wrap:wrap}strong{color:#c4d99a}button,a{font:inherit;color:#d6e5bd;background:#273321;border:1px solid #46573a;border-radius:5px;padding:5px 10px;text-decoration:none;cursor:pointer}button:hover,a:hover{background:#3b4d30}.meta{color:#9da990;font-size:12px}#message{display:none;margin:10px 14px;padding:12px;background:#433a20;color:#f8e3a8;border-radius:5px}iframe{display:block;width:100%;height:calc(100dvh - 90px);border:0;background:#000}footer{font-size:11px;color:#8c9880;padding:7px 14px}footer a{padding:0;border:0;background:none}input{display:none}</style></head><body>
+<header><strong>像素地牢</strong><span id="version" class="meta">读取版本…</span><button id="export">导出存档</button><button id="import">导入存档</button><button id="restore">升级前备份</button><button id="recover">替换前备份</button><a href="source.zip">源码</a></header>
+<div id="message" role="status"></div><iframe id="game" title="破碎的像素地牢网页版" allow="autoplay; fullscreen"></iframe>
+<footer>非官方网页移植 · 以官方开源稳定版为基线 · 一个当前存档，保存在此浏览器。原作 <a href="https://shatteredpixel.com/shatteredpd/">Evan Debenham</a> / Watabou · <a href="LICENSE.txt">GPL</a></footer><input type="file" id="file" accept="application/json,.json">
+<script type="module">
+import {createStore,importLegacy,acquireWriter,CURRENT_KEY,UPGRADE_KEY,RECOVERY_KEY} from './store.mjs';
+const frame=document.querySelector('#game'),message=document.querySelector('#message');
+const show=text=>{message.textContent=text;message.style.display='block';};
+let store,lease,version;
+function download(value,name){const url=URL.createObjectURL(new Blob([typeof value==='string'?value:JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+document.querySelector('#export').onclick=()=>{try{frame.contentWindow?.portalSaveNow?.();store?.flush();download(store?store.export():localStorage.getItem(CURRENT_KEY)||'{}','pixel-dungeon-save.json');}catch(error){show(error.message);}};
+document.querySelector('#import').onclick=()=>document.querySelector('#file').click();
+document.querySelector('#file').onchange=async event=>{
+  try{const file=event.target.files[0];if(!file)return;if(file.size>8*1024*1024)throw new Error('备份文件过大。');
+    const imported=await importLegacy(JSON.parse(await file.text()));
+    if(!store||!lease?.renew())throw new Error('当前页面不能写入存档，请关闭其他页面后重载。');
+    if(!confirm('导入后将替换当前进度。原进度会保留为恢复备份，是否继续？'))return;
+    store.install(imported);location.reload();
+  }catch(error){show(error.message);}finally{event.target.value='';}
+};
+function restoreBackup(key){
+  try{const raw=localStorage.getItem(key);if(!raw)throw new Error('尚无此类备份。');const backup=JSON.parse(raw);
+    if(!version||backup.engine.code>version.code)throw new Error('备份也来自更高版本，请先使用对应的游戏版本。');
+    if(!confirm('恢复升级前的进度？当前进度会另行保留。'))return;
+    if(!lease?.renew())throw new Error('另一个页面正在使用存档，请先关闭它。');
+    if(store)store.install(backup);
+    else{const old=localStorage.getItem(CURRENT_KEY);if(old)localStorage.setItem('portal-pd.recovery.v1',old);localStorage.setItem(CURRENT_KEY,raw);}
+    location.reload();
+  }catch(error){show(error.message);}
+}
+document.querySelector('#restore').onclick=()=>restoreBackup(UPGRADE_KEY);
+document.querySelector('#recover').onclick=()=>restoreBackup(RECOVERY_KEY);
+try{
+  const response=await fetch('./play/version.json');if(!response.ok)throw new Error('版本信息加载失败。');version=await response.json();
+  document.querySelector('#version').textContent=version.version+' · 官方源码移植';
+  const owner=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);lease=acquireWriter(localStorage,owner);
+  if(!lease.acquired)throw new Error('另一个页面正在使用这个存档，请先关闭它，再刷新此页。');
+  setInterval(()=>{if(!lease.renew()){frame.remove();show('本页已停止写入存档。请重新打开游戏，读取最新进度。');}},2500);
+  store=createStore(localStorage,version);
+  store.setWriteGuard(lease.renew);window.portalStore=store;
+  if(store.migrationPending)show('发现旧版进度：请进入并继续游戏。验证可读取后才会保存升级结果，旧档会保留为恢复备份。');
+  frame.src='./play/';
+  window.addEventListener('pagehide',()=>{try{frame.contentWindow?.portalSaveNow?.();store.flush();}catch{}lease.release();});
+  window.addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='game-error')show('游戏运行错误：'+event.data.message+'。可先导出存档保留进度。');});
+}catch(error){show(error.message);}
+</script></body></html>

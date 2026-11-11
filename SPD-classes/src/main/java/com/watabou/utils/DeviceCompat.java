@@ -36,15 +36,16 @@ public class DeviceCompat {
 	}
 
 	public static boolean isAndroid(){
-		return SharedLibraryLoader.os == Os.Android;
+		return Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.Android;
 	}
 
 	public static boolean isiOS(){
-		return SharedLibraryLoader.os == Os.IOS;
+		return Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.iOS;
 	}
 
 	public static boolean isDesktop(){
-		return SharedLibraryLoader.os == Os.Windows || SharedLibraryLoader.os == Os.MacOsX || SharedLibraryLoader.os == Os.Linux;
+		return Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.Desktop
+				|| Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.HeadlessDesktop;
 	}
 
 	public static boolean hasHardKeyboard(){
