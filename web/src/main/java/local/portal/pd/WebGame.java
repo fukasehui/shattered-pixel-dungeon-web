@@ -16,6 +16,7 @@ public final class WebGame extends ShatteredPixelDungeon {
     @JSFunctor interface SaveNow extends JSObject {void run();}
     @JSBody(params="save",script="window.portalSaveNow=()=>save();") private static native void exposeSave(SaveNow save);
     private long nextSave;
+    private final CooperativeFrame frames=new CooperativeFrame(task->new Thread(task,"SHPD Web Render").start());
     public WebGame(){super(new WebPlatform());}
     @Override public void create(){
         Gdx.files=new BrowserFiles(Gdx.files,new WebSaves());
@@ -25,6 +26,11 @@ public final class WebGame extends ShatteredPixelDungeon {
         exposeSave(()->{try{if(Dungeon.hero!=null&&Dungeon.hero.ready)Dungeon.saveAll();WebSaves.flush();}catch(Exception error){reportException(error);}});
     }
     @Override public void render(){
+        // WebApplication invokes render directly from JavaScript. A Java Thread
+        // supplies the TeaVM coroutine needed by official scene teardown waits.
+        frames.run(this::renderFrame);
+    }
+    private void renderFrame(){
         super.render();
         if(Game.scene() instanceof GameScene&&Dungeon.hero!=null&&Dungeon.hero.ready){
             WebSaves.acceptUpgrade();
@@ -33,6 +39,6 @@ public final class WebGame extends ShatteredPixelDungeon {
         }
         WebSaves.flush();
     }
-    @Override public void pause(){super.pause();WebSaves.flush();}
+    @Override public void pause(){new Thread(()->{super.pause();WebSaves.flush();},"SHPD Web Pause").start();}
     @Override public void finish(){Game.switchScene(com.shatteredpixel.shatteredpixeldungeon.scenes.TitleScene.class);}
 }

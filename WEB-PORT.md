@@ -21,6 +21,10 @@ serialization are retained. Narrowly audited compatibility changes are required:
    TeaVM render callbacks share a cooperatively scheduled JS thread. Native
    thread checks remain enabled. This fixes combat floating-text rendering.
 
+Browser render and pause callbacks enter TeaVM Java threads. A frame gate
+prevents overlapping draws while official scene teardown waits for actor work.
+This preserves official GameScene shutdown rather than bypassing its waits.
+
 The Web target uses the open-source libGDX TeaVM backend 1.5.6. The pinned
 TeaVM static-initializer compatibility workaround was informed by broqdev's
 community Web port. No community-fork gameplay, multiplayer implementation or
