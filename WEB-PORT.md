@@ -111,9 +111,9 @@ credits and supply corresponding modified source with hosted browser code.
 
 ## Current VPS sample
 
-URL: http://117.72.188.108:8082/ (no login; browser-local progress).
+URL: http://localhost:8082/ (no login; browser-local progress).
 The default entry shows only the game, filling the viewport. Save management,
-source and credits remain available at http://117.72.188.108:8082/?manage=1 .
+source and credits remain available at http://localhost:8082/?manage=1 .
 The Web adapter defaults new profiles to Simplified Chinese and preserves the
 official opening tutorial. It explicitly refreshes message bundles after binding saved
 preferences, preserving an existing language selection. Global character unlock

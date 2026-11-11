@@ -20,3 +20,17 @@ local.properties
 *.idea
 
 .web-update/
+
+# Private configuration, local saves, packaged releases
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+pixel-dungeon-save*.json
+qa-*-profile.json
+qa-*-run.json
+*.log
+*.tar.gz
+source.zip
+.tools/

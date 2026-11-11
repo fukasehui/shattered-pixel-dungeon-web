@@ -1,3 +1,15 @@
+# 破碎的像素地牢网页版
+
+基于官方 v4.0.2 的非官方浏览器移植，支持本地存档导入导出、每层检查点及原生死亡重试窗口。
+
+- [中文构建与更新说明](README-WEB.zh-CN.md)
+- [宿主机部署说明（不使用 Docker）](hosting/README.md)
+- [移植和存档技术说明](WEB-PORT.md)
+
+以下为原项目说明，保留原作署名和链接。
+
+---
+
 # Shattered Pixel Dungeon
 
 [Shattered Pixel Dungeon](https://shatteredpixel.com/shatteredpd/) is an open-source traditional roguelike dungeon crawler with randomized levels and enemies, and hundreds of items to collect and use. It's based on the [source code of Pixel Dungeon](https://github.com/00-Evan/pixel-dungeon-gradle), by [Watabou](https://watabou.itch.io/).
