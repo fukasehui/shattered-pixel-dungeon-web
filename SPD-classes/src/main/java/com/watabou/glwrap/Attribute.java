@@ -26,6 +26,7 @@ import com.badlogic.gdx.Gdx;
 import java.nio.FloatBuffer;
 
 public class Attribute {
+	private static int browserVertices = -1;
 
 	private int location;
 	
@@ -46,6 +47,17 @@ public class Attribute {
 	}
 	
 	public void vertexPointer( int size, int stride, FloatBuffer ptr ) {
+		if (Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) {
+			// WebGL forbids native client-memory pointers. Upload a complete view and retain its attribute offset.
+			int offset = ptr.position();
+			FloatBuffer upload = ptr.duplicate();
+			((java.nio.Buffer)upload).position(0);
+			if (browserVertices == -1) browserVertices = Gdx.gl.glGenBuffer();
+			Gdx.gl.glBindBuffer(Gdx.gl.GL_ARRAY_BUFFER, browserVertices);
+			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, upload.limit()*4, upload.slice(), Gdx.gl.GL_DYNAMIC_DRAW);
+			vertexBuffer(size, stride, offset);
+			return;
+		}
 		Gdx.gl.glVertexAttribPointer( location, size, Gdx.gl.GL_FLOAT, false, stride * 4, ptr );
 	}
 

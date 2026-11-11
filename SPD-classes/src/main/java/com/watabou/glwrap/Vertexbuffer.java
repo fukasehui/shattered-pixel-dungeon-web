@@ -78,7 +78,12 @@ public class Vertexbuffer {
 		((Buffer)vertices).position(updateStart);
 		bind();
 
-		if (updateStart == 0 && updateEnd == vertices.limit()){
+		if (Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) {
+			// The browser bridge does not honor Java buffer position for partial uploads.
+			FloatBuffer upload = vertices.duplicate();
+			((Buffer)upload).position(0);
+			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, upload.limit()*4, upload.slice(), Gdx.gl.GL_DYNAMIC_DRAW);
+		} else if (updateStart == 0 && updateEnd == vertices.limit()){
 			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, vertices.limit()*4, vertices, Gdx.gl.GL_DYNAMIC_DRAW);
 		} else {
 			Gdx.gl.glBufferSubData(Gdx.gl.GL_ARRAY_BUFFER, updateStart*4, (updateEnd - updateStart)*4, vertices);

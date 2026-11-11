@@ -1,0 +1,125 @@
+diff --git a/SPD-classes/src/main/java/com/watabou/glwrap/Attribute.java b/SPD-classes/src/main/java/com/watabou/glwrap/Attribute.java
+index 44132a9..4135fc1 100644
+--- a/SPD-classes/src/main/java/com/watabou/glwrap/Attribute.java
++++ b/SPD-classes/src/main/java/com/watabou/glwrap/Attribute.java
+@@ -26,6 +26,7 @@ import com.badlogic.gdx.Gdx;
+ import java.nio.FloatBuffer;
+ 
+ public class Attribute {
++	private static int browserVertices = -1;
+ 
+ 	private int location;
+ 	
+@@ -46,6 +47,17 @@ public class Attribute {
+ 	}
+ 	
+ 	public void vertexPointer( int size, int stride, FloatBuffer ptr ) {
++		if (Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) {
++			// WebGL forbids native client-memory pointers. Upload a complete view and retain its attribute offset.
++			int offset = ptr.position();
++			FloatBuffer upload = ptr.duplicate();
++			((java.nio.Buffer)upload).position(0);
++			if (browserVertices == -1) browserVertices = Gdx.gl.glGenBuffer();
++			Gdx.gl.glBindBuffer(Gdx.gl.GL_ARRAY_BUFFER, browserVertices);
++			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, upload.limit()*4, upload.slice(), Gdx.gl.GL_DYNAMIC_DRAW);
++			vertexBuffer(size, stride, offset);
++			return;
++		}
+ 		Gdx.gl.glVertexAttribPointer( location, size, Gdx.gl.GL_FLOAT, false, stride * 4, ptr );
+ 	}
+ 
+diff --git a/SPD-classes/src/main/java/com/watabou/glwrap/Vertexbuffer.java b/SPD-classes/src/main/java/com/watabou/glwrap/Vertexbuffer.java
+index 390fbc3..7af26a8 100644
+--- a/SPD-classes/src/main/java/com/watabou/glwrap/Vertexbuffer.java
++++ b/SPD-classes/src/main/java/com/watabou/glwrap/Vertexbuffer.java
+@@ -78,7 +78,12 @@ public class Vertexbuffer {
+ 		((Buffer)vertices).position(updateStart);
+ 		bind();
+ 
+-		if (updateStart == 0 && updateEnd == vertices.limit()){
++		if (Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) {
++			// The browser bridge does not honor Java buffer position for partial uploads.
++			FloatBuffer upload = vertices.duplicate();
++			((Buffer)upload).position(0);
++			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, upload.limit()*4, upload.slice(), Gdx.gl.GL_DYNAMIC_DRAW);
++		} else if (updateStart == 0 && updateEnd == vertices.limit()){
+ 			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, vertices.limit()*4, vertices, Gdx.gl.GL_DYNAMIC_DRAW);
+ 		} else {
+ 			Gdx.gl.glBufferSubData(Gdx.gl.GL_ARRAY_BUFFER, updateStart*4, (updateEnd - updateStart)*4, vertices);
+diff --git a/SPD-classes/src/main/java/com/watabou/noosa/NoosaScript.java b/SPD-classes/src/main/java/com/watabou/noosa/NoosaScript.java
+index 53f1ae6..0815b10 100644
+--- a/SPD-classes/src/main/java/com/watabou/noosa/NoosaScript.java
++++ b/SPD-classes/src/main/java/com/watabou/noosa/NoosaScript.java
+@@ -81,8 +81,18 @@ public class NoosaScript extends Script {
+ 		((Buffer)vertices).position( 2 );
+ 		aUV.vertexPointer( 2, 4, vertices );
+ 
+-		Quad.releaseIndices();
+-		Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, indices );
++		if (Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) {
++			ShortBuffer upload = indices.duplicate();
++			((Buffer)upload).position(0); ((Buffer)upload).limit(size);
++			int indexBuffer = Gdx.gl20.glGenBuffer();
++			Gdx.gl20.glBindBuffer(Gdx.gl20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
++			Gdx.gl20.glBufferData(Gdx.gl20.GL_ELEMENT_ARRAY_BUFFER, size*2, upload.slice(), Gdx.gl20.GL_STREAM_DRAW);
++			Gdx.gl20.glDrawElements(Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, 0);
++			Gdx.gl20.glDeleteBuffer(indexBuffer);
++		} else {
++			Quad.releaseIndices();
++			Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, indices );
++		}
+ 		Quad.bindIndices();
+ 	}
+ 
+diff --git a/SPD-classes/src/main/java/com/watabou/utils/Bundle.java b/SPD-classes/src/main/java/com/watabou/utils/Bundle.java
+index c2b7e34..446779e 100644
+--- a/SPD-classes/src/main/java/com/watabou/utils/Bundle.java
++++ b/SPD-classes/src/main/java/com/watabou/utils/Bundle.java
+@@ -539,7 +539,9 @@ public class Bundle {
+ 	public static boolean write( Bundle bundle, OutputStream stream, boolean compressed ) {
+ 		try {
+ 			BufferedWriter writer;
+-			if (compressed) writer = new BufferedWriter( new OutputStreamWriter( new GZIPOutputStream(stream, GZIP_BUFFER ) ) );
++			// TeaVM's Deflater fails when closing a flushed GZIP stream. The official
++			// reader also accepts plain JSON, preserving the same Bundle schema.
++			if (compressed && (com.badlogic.gdx.Gdx.app == null || com.badlogic.gdx.Gdx.app.getType() != com.badlogic.gdx.Application.ApplicationType.WebGL)) writer = new BufferedWriter( new OutputStreamWriter( new GZIPOutputStream(stream, GZIP_BUFFER ) ) );
+ 			else writer = new BufferedWriter( new OutputStreamWriter( stream ) );
+ 
+ 			//JSONObject.write does not exist on Android/iOS
+diff --git a/SPD-classes/src/main/java/com/watabou/utils/DeviceCompat.java b/SPD-classes/src/main/java/com/watabou/utils/DeviceCompat.java
+index 56b5d50..bf74e62 100644
+--- a/SPD-classes/src/main/java/com/watabou/utils/DeviceCompat.java
++++ b/SPD-classes/src/main/java/com/watabou/utils/DeviceCompat.java
+@@ -36,15 +36,16 @@ public class DeviceCompat {
+ 	}
+ 
+ 	public static boolean isAndroid(){
+-		return SharedLibraryLoader.os == Os.Android;
++		return Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.Android;
+ 	}
+ 
+ 	public static boolean isiOS(){
+-		return SharedLibraryLoader.os == Os.IOS;
++		return Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.iOS;
+ 	}
+ 
+ 	public static boolean isDesktop(){
+-		return SharedLibraryLoader.os == Os.Windows || SharedLibraryLoader.os == Os.MacOsX || SharedLibraryLoader.os == Os.Linux;
++		return Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.Desktop
++				|| Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.HeadlessDesktop;
+ 	}
+ 
+ 	public static boolean hasHardKeyboard(){
+diff --git a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java
+index 3f0d2ea..219c74b 100644
+--- a/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java
++++ b/core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/GamesInProgress.java
+@@ -35,7 +35,7 @@ import java.util.HashMap;
+ 
+ public class GamesInProgress {
+ 	
+-	public static final int MAX_SLOTS = HeroClass.values().length;
++	public static final int MAX_SLOTS = 1; // Web portal: one current run; native save serialization unchanged.
+ 	
+ 	//null means we have loaded info and it is empty, no entry means unknown.
+ 	private static HashMap<Integer, Info> slotStates = new HashMap<>();

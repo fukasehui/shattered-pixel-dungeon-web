@@ -9,7 +9,7 @@ const frame=document.querySelector('#game'),message=document.querySelector('#mes
 const show=text=>{message.textContent=text;message.style.display='block';};
 let store,lease,version;
 function download(value,name){const url=URL.createObjectURL(new Blob([typeof value==='string'?value:JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-document.querySelector('#export').onclick=()=>{try{frame.contentWindow?.portalSaveNow?.();store?.flush();download(store?store.export():localStorage.getItem(CURRENT_KEY)||'{}','pixel-dungeon-save.json');}catch(error){show(error.message);}};
+document.querySelector('#export').onclick=()=>{let warning;try{frame.contentWindow?.portalSaveNow?.();store?.flush();}catch(error){warning=error.message;}try{download(store?store.export():localStorage.getItem(CURRENT_KEY)||'{}','pixel-dungeon-save.json');if(warning)show('本地保存失败，已导出内存中的进度：'+warning);}catch(error){show(error.message);}};
 document.querySelector('#import').onclick=()=>document.querySelector('#file').click();
 document.querySelector('#file').onchange=async event=>{
   try{const file=event.target.files[0];if(!file)return;if(file.size>8*1024*1024)throw new Error('备份文件过大。');

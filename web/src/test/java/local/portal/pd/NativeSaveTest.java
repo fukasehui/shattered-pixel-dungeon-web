@@ -10,6 +10,17 @@ import com.watabou.utils.FileUtils;
 import com.badlogic.gdx.Files;
 
 public class NativeSaveTest {
+    @Test public void browserUsesOfficialPlainBundleSchema() throws Exception {
+        com.badlogic.gdx.Application previous=Gdx.app;
+        try {
+            Gdx.app=(com.badlogic.gdx.Application)java.lang.reflect.Proxy.newProxyInstance(com.badlogic.gdx.Application.class.getClassLoader(),new Class[]{com.badlogic.gdx.Application.class},
+                (object,method,args)->method.getName().equals("getType")?com.badlogic.gdx.Application.ApplicationType.WebGL:null);
+            Bundle source=new Bundle();source.put("version",922);
+            java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();
+            assertTrue(Bundle.write(source,bytes));assertEquals('{',bytes.toByteArray()[0]);
+            assertEquals(922,Bundle.read(new java.io.ByteArrayInputStream(bytes.toByteArray())).getInt("version"));
+        } finally {Gdx.app=previous;}
+    }
     static class Memory implements SaveAccess {
         Map<String,String> data=new HashMap<>();
         public String read(String p){return data.get(p);}public void write(String p,String b){data.put(p,b);}

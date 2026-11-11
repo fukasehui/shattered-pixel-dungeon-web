@@ -81,8 +81,18 @@ public class NoosaScript extends Script {
 		((Buffer)vertices).position( 2 );
 		aUV.vertexPointer( 2, 4, vertices );
 
-		Quad.releaseIndices();
-		Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, indices );
+		if (Gdx.app.getType() == com.badlogic.gdx.Application.ApplicationType.WebGL) {
+			ShortBuffer upload = indices.duplicate();
+			((Buffer)upload).position(0); ((Buffer)upload).limit(size);
+			int indexBuffer = Gdx.gl20.glGenBuffer();
+			Gdx.gl20.glBindBuffer(Gdx.gl20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+			Gdx.gl20.glBufferData(Gdx.gl20.GL_ELEMENT_ARRAY_BUFFER, size*2, upload.slice(), Gdx.gl20.GL_STREAM_DRAW);
+			Gdx.gl20.glDrawElements(Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, 0);
+			Gdx.gl20.glDeleteBuffer(indexBuffer);
+		} else {
+			Quad.releaseIndices();
+			Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, indices );
+		}
 		Quad.bindIndices();
 	}
 

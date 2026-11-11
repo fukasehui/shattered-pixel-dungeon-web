@@ -6,11 +6,17 @@ https://github.com/00-Evan/shattered-pixel-dungeon .
 
 This checkout starts at that official tag, rather than a community Web fork.
 The browser target is `web/`; official `core/`, assets and native Bundle save
-serialization are retained. Two narrowly audited changes are required:
+serialization are retained. Narrowly audited compatibility changes are required:
 
 1. GamesInProgress uses one active save slot.
 2. DeviceCompat detects the libGDX application type; browser compilation cannot
    read the native SharedLibraryLoader OS field.
+3. Attribute, Vertexbuffer and NoosaScript use GPU buffer uploads instead of
+   native client-memory pointers, which WebGL cannot execute. The approved
+   exact patch is web/patches/compatibility.patch.
+4. Bundle writes use the official reader's supported plain JSON mode in browsers,
+   avoiding a TeaVM GZIP close/flush failure. Desktop compression is unchanged;
+   game fields, class names and upgrade logic retain the official format.
 
 The Web target uses the open-source libGDX TeaVM backend 1.5.6. The pinned
 TeaVM static-initializer compatibility workaround was informed by broqdev's
@@ -61,7 +67,9 @@ periodically and before normal page exit. The wrapper offers export/import.
 
 For an older profile, the new engine initially works on an in-memory copy.
 It commits migration only after the native game has restored a playable hero,
-keeping the pre-upgrade snapshot at `portal-pd.upgrade.v1`. Older engines refuse
+keeping the pre-upgrade snapshot at `portal-pd.upgrade.v1`. Import/restore keeps
+the displaced profile separately at `portal-pd.replacement.v1`, so importing an
+older run cannot destroy this recovery copy during migration. Older engines refuse
 newer profiles. Restore the pre-upgrade snapshot when rolling the engine back;
 never feed an upgraded save to an older engine. A writer lease blocks ordinary
 concurrent tabs; expired writers must reload instead of resuming stale state.
@@ -74,3 +82,25 @@ is required when moving to a domain or HTTPS. No cloud synchronization is added.
 
 GPLv3-or-later applies to the game and this derivative. Preserve the original
 credits and supply corresponding modified source with hosted browser code.
+
+## Current VPS sample
+
+URL: http://117.72.188.108:8082/ (no login; browser-local progress).
+The earlier community sample remains on port 8081. Static hosting uses native
+Node.js under systemd, not Docker. No game simulation runs on the VPS.
+
+    systemctl status pixel-dungeon-official
+    systemctl restart pixel-dungeon-official
+    journalctl -u pixel-dungeon-official -n 100 --no-pager
+
+Release root: `/srv/pixel-dungeon-official/releases/4.0.2-r1`.
+`/srv/pixel-dungeon-official/current` selects the active release. For a future
+validated build, upload a new complete release directory containing `public`,
+`server.mjs`, and `deploy.sh`, then run its deploy script with the new release ID.
+The script retains the prior release through `previous`. To roll back, point
+`current` to that verified previous directory and restart the service; restore
+the pre-upgrade browser snapshot as well. Keep the browser origin unchanged.
+
+The current prototype caps a profile at 2 MiB and preserves durable data on
+storage errors. Export remains available if a flush fails. Deep-run storage
+capacity and full-campaign compatibility still require broader play testing.

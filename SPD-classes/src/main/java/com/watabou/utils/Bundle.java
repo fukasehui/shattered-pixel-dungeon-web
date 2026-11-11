@@ -539,7 +539,9 @@ public class Bundle {
 	public static boolean write( Bundle bundle, OutputStream stream, boolean compressed ) {
 		try {
 			BufferedWriter writer;
-			if (compressed) writer = new BufferedWriter( new OutputStreamWriter( new GZIPOutputStream(stream, GZIP_BUFFER ) ) );
+			// TeaVM's Deflater fails when closing a flushed GZIP stream. The official
+			// reader also accepts plain JSON, preserving the same Bundle schema.
+			if (compressed && (com.badlogic.gdx.Gdx.app == null || com.badlogic.gdx.Gdx.app.getType() != com.badlogic.gdx.Application.ApplicationType.WebGL)) writer = new BufferedWriter( new OutputStreamWriter( new GZIPOutputStream(stream, GZIP_BUFFER ) ) );
 			else writer = new BufferedWriter( new OutputStreamWriter( stream ) );
 
 			//JSONObject.write does not exist on Android/iOS
