@@ -10,10 +10,9 @@ import com.watabou.utils.GameSettings;
 
 /** Additive browser defaults. Never creates or replaces a character run. */
 final class WebDefaults {
-    static void preferences(Preferences prefs,int version){
+    static void preferences(Preferences prefs){
         if(!prefs.contains(SPDSettings.KEY_LANG))prefs.putString(SPDSettings.KEY_LANG,Languages.CHI_SMPL.code());
-        if(!prefs.contains(SPDSettings.KEY_VERSION))prefs.putInteger(SPDSettings.KEY_VERSION,version);
-        prefs.putBoolean("intro",false).flush();
+        prefs.flush();
         GameSettings.set(prefs);
     }
     static void unlocks(){
@@ -24,7 +23,6 @@ final class WebDefaults {
         for(String page:Document.ALCHEMY_GUIDE.pageNames()){
             if(!Document.ALCHEMY_GUIDE.isPageRead(page))Document.ALCHEMY_GUIDE.readPage(page);
         }
-        if(!Document.ADVENTURERS_GUIDE.isPageRead(Document.GUIDE_INTRO))Document.ADVENTURERS_GUIDE.readPage(Document.GUIDE_INTRO);
         Badges.saveGlobal();Journal.saveGlobal();
     }
 }
