@@ -17,6 +17,9 @@ serialization are retained. Narrowly audited compatibility changes are required:
 4. Bundle writes use the official reader's supported plain JSON mode in browsers,
    avoiding a TeaVM GZIP close/flush failure. Desktop compression is unchanged;
    game fields, class names and upgrade logic retain the official format.
+5. RenderedText skips its native actor-thread-name assertion on WebGL because
+   TeaVM render callbacks share a cooperatively scheduled JS thread. Native
+   thread checks remain enabled. This fixes combat floating-text rendering.
 
 The Web target uses the open-source libGDX TeaVM backend 1.5.6. The pinned
 TeaVM static-initializer compatibility workaround was informed by broqdev's

@@ -79,7 +79,10 @@ public class RenderedText extends Image {
 	
 	private synchronized void measure(){
 		
-		if (Thread.currentThread().getName().equals("SHPD Actor Thread")){
+		// TeaVM cooperatively schedules all Java threads on the browser's JS thread;
+		// its current-thread name may survive into render callbacks.
+		if ((com.badlogic.gdx.Gdx.app == null || com.badlogic.gdx.Gdx.app.getType() != com.badlogic.gdx.Application.ApplicationType.WebGL)
+				&& Thread.currentThread().getName().equals("SHPD Actor Thread")){
 			throw new RuntimeException("Text measured from the actor thread!");
 		}
 		
