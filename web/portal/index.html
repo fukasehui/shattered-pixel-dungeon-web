@@ -1,10 +1,13 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>像素地牢 · 官方源码网页版</title>
 <style>:root{color-scheme:dark;font:14px system-ui,"Microsoft YaHei",sans-serif;background:#10140f;color:#dae3cb}*{box-sizing:border-box}body{margin:0}header{min-height:48px;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #35402d;flex-wrap:wrap}strong{color:#c4d99a}button,a{font:inherit;color:#d6e5bd;background:#273321;border:1px solid #46573a;border-radius:5px;padding:5px 10px;text-decoration:none;cursor:pointer}button:hover,a:hover{background:#3b4d30}.meta{color:#9da990;font-size:12px}#message{display:none;margin:10px 14px;padding:12px;background:#433a20;color:#f8e3a8;border-radius:5px}iframe{display:block;width:100%;height:calc(100dvh - 90px);border:0;background:#000}footer{font-size:11px;color:#8c9880;padding:7px 14px}footer a{padding:0;border:0;background:none}input{display:none}</style></head><body>
+<style>html,body{width:100%;height:100%;overflow:hidden;background:#000}header,footer{display:none}iframe{width:100%;height:100dvh}#message{position:fixed;top:0;left:0;right:0;z-index:10}.management{overflow:auto}.management body{overflow:auto}.management header{display:flex}.management footer{display:block}.management iframe{height:calc(100dvh - 90px)}.management #message{position:static}</style>
 <header><strong>像素地牢</strong><span id="version" class="meta">读取版本…</span><button id="export">导出存档</button><button id="import">导入存档</button><button id="restore">升级前备份</button><button id="recover">替换前备份</button><a href="source.zip">源码</a></header>
 <div id="message" role="status"></div><iframe id="game" title="破碎的像素地牢网页版" allow="autoplay; fullscreen"></iframe>
 <footer>非官方网页移植 · 以官方开源稳定版为基线 · 一个当前存档，保存在此浏览器。原作 <a href="https://shatteredpixel.com/shatteredpd/">Evan Debenham</a> / Watabou · <a href="LICENSE.txt">GPL</a></footer><input type="file" id="file" accept="application/json,.json">
 <script type="module">
 import {createStore,importLegacy,acquireWriter,CURRENT_KEY,UPGRADE_KEY,RECOVERY_KEY} from './store.mjs';
+const management=new URLSearchParams(location.search).get('manage')==='1';
+document.documentElement.classList.toggle('management',management);
 const frame=document.querySelector('#game'),message=document.querySelector('#message');
 const show=text=>{message.textContent=text;message.style.display='block';};
 let store,lease,version;
@@ -39,7 +42,7 @@ try{
   setInterval(()=>{if(!lease.renew()){frame.remove();show('本页已停止写入存档。请重新打开游戏，读取最新进度。');}},2500);
   store=createStore(localStorage,version);
   store.setWriteGuard(lease.renew);window.portalStore=store;
-  if(store.migrationPending)show('发现旧版进度：请进入并继续游戏。验证可读取后才会保存升级结果，旧档会保留为恢复备份。');
+  if(management&&store.migrationPending)show('发现旧版进度：请进入并继续游戏。验证可读取后才会保存升级结果，旧档会保留为恢复备份。');
   frame.src='./play/';
   window.addEventListener('pagehide',()=>{try{frame.contentWindow?.portalSaveNow?.();store.flush();}catch{}lease.release();});
   window.addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='game-error')show('游戏运行错误：'+event.data.message+'。可先导出存档保留进度。');});

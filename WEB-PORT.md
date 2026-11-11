@@ -89,6 +89,8 @@ credits and supply corresponding modified source with hosted browser code.
 ## Current VPS sample
 
 URL: http://117.72.188.108:8082/ (no login; browser-local progress).
+The default entry shows only the game, filling the viewport. Save management,
+source and credits remain available at http://117.72.188.108:8082/?manage=1 .
 The earlier community sample remains on port 8081. Static hosting uses native
 Node.js under systemd, not Docker. No game simulation runs on the VPS.
 
