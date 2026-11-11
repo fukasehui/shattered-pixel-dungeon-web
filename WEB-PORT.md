@@ -142,3 +142,7 @@ Death choices use the native WndOptions frame. After cooperative actor shutdown,
 retry restores the checkpoint in the live store and enters InterlevelScene CONTINUE.
 Returning to TitleScene retains the pending-death decision; starting a run reopens
 the choices until retry or end-run. These actions never reload the document.
+
+The Web title screen includes a native StyledButton for save management. The
+wrapper toggles its controls and URL with replaceState without replacing the
+game frame or storage writer. Return to game hides the controls again.

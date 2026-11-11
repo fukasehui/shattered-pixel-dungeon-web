@@ -12,6 +12,10 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.StartScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.HeroSelectScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
+import com.shatteredpixel.shatteredpixeldungeon.Chrome;
+import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
+import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
+import com.watabou.noosa.Camera;
 import com.watabou.noosa.Scene;
 import com.watabou.noosa.Game;
 import org.teavm.jso.JSBody;
@@ -23,6 +27,7 @@ public final class WebGame extends ShatteredPixelDungeon {
     @JSBody(params="save",script="window.portalSaveNow=()=>save();") private static native void exposeSave(SaveNow save);
     private long nextSave;
     private Scene lastDeathDialogScene;
+    private Scene saveManagementScene;
     private boolean deathMenu;
     private final CooperativeFrame frames=new CooperativeFrame(task->new Thread(task,"SHPD Web Render").start());
     public WebGame(){super(new WebPlatform());}
@@ -42,6 +47,15 @@ public final class WebGame extends ShatteredPixelDungeon {
     }
     private void renderFrame(){
         super.render();
+        if(Game.scene() instanceof TitleScene&&Game.scene()!=saveManagementScene){
+            saveManagementScene=Game.scene();
+            StyledButton saves=new StyledButton(Chrome.Type.GREY_BUTTON_TR,"存档管理",8){
+                @Override protected void onClick(){WebSaves.openManagement();}
+            };
+            saves.setRect(Camera.main.width-62,4,58,18);
+            PixelScene.align(saves);
+            Game.scene().add(saves);
+        }
         if(WebSaves.isDead()&&!Game.switchingScene()&&Game.scene()!=lastDeathDialogScene
                 &&(Game.scene() instanceof GameScene||Game.scene() instanceof TitleScene&&!deathMenu))showDeathOptions(null);
         if(Game.scene() instanceof GameScene&&Dungeon.hero!=null&&Dungeon.hero.isAlive()&&Dungeon.hero.ready){

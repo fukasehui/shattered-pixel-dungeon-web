@@ -26,4 +26,5 @@ public final class WebSaves implements SaveAccess {
     @JSBody(script="window.portalStore.retryFloor({inPlace:true});") public static native void retryFloor();
     @JSBody(script="window.portalStore.endRun({inPlace:true});") public static native void endRun();
     @JSBody(script="if(parent.portalExportSave)parent.portalExportSave();") public static native void exportSave();
+    @JSBody(script="if(parent.portalOpenSaveManagement)parent.portalOpenSaveManagement();") public static native void openManagement();
 }
