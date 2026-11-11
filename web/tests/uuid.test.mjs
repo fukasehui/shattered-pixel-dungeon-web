@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {webcrypto} from 'node:crypto';
+const source=fs.readFileSync(new URL('../portal/uuid.js',import.meta.url),'utf8');
+test('HTTP fallback generates random RFC4122 v4 identifiers used by death rankings',()=>{let calls=0;const crypto={getRandomValues(a){calls++;return webcrypto.getRandomValues(a);}};vm.runInNewContext(source,{crypto});const values=new Set();for(let i=0;i<100;i++){const id=crypto.randomUUID();assert.match(id,/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/);values.add(id);}assert.equal(calls,100);assert.equal(values.size,100);});
+test('native UUID implementation is retained',()=>{const original=()=> 'native',crypto={randomUUID:original};vm.runInNewContext(source,{crypto});assert.equal(crypto.randomUUID,original);});
