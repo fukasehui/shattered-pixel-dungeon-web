@@ -8,7 +8,7 @@ const names=execFileSync('git',['-c','core.quotepath=false','ls-files','-c','-o'
 const list=path.join(root,'web/build/source-files.txt');fs.writeFileSync(list,names.map(n=>JSON.stringify(n)).join('\n'));
 execFileSync(path.join(process.env.JAVA_HOME,'bin',process.platform==='win32'?'jar.exe':'jar'),['--create','--no-manifest','--file',path.join(target,'source.zip'),'@'+list],{cwd:root,stdio:'inherit'});
 const version=JSON.parse(fs.readFileSync(path.join(target,'play/version.json')));version.sourceArchiveSHA256=crypto.createHash('sha256').update(fs.readFileSync(path.join(target,'source.zip'))).digest('hex');
-const entry=fs.readFileSync(path.join(root,'web/src/main/resources/webapp/index.html'),'utf8').replace('%TITLE%',`Pixel Dungeon ${version.version} · Official-source Web Port`).replace('%MODE%','main()').replace('%JS_SCRIPT%','<script type="text/javascript" charset="utf-8" src="dungeon.js"></script>');
+const entry=fs.readFileSync(path.join(root,'web/src/main/resources/webapp/index.html'),'utf8').replace('%TITLE%','破碎的像素地牢').replace('%MODE%','main()').replace('%JS_SCRIPT%','<script type="text/javascript" charset="utf-8" src="dungeon.js"></script>');
 fs.writeFileSync(path.join(target,'play/index.html'),entry);
 fs.writeFileSync(path.join(target,'play/version.json'),JSON.stringify(version,null,2)+'\n');
 function gzip(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){const f=path.join(dir,e.name);if(e.isDirectory())gzip(f);else if(/\.(js|mjs|html|json|txt|wasm)$/.test(f))fs.writeFileSync(f+'.gz',zlib.gzipSync(fs.readFileSync(f),{level:9}));}}gzip(target);

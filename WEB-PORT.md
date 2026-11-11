@@ -137,3 +137,8 @@ the pre-upgrade browser snapshot as well. Keep the browser origin unchanged.
 The current prototype caps a profile at 2 MiB and preserves durable data on
 storage errors. Export remains available if a flush fails. Deep-run storage
 capacity and full-campaign compatibility still require broader play testing.
+
+Death choices use the native WndOptions frame. After cooperative actor shutdown,
+retry restores the checkpoint in the live store and enters InterlevelScene CONTINUE.
+Returning to TitleScene retains the pending-death decision; starting a run reopens
+the choices until retry or end-run. These actions never reload the document.

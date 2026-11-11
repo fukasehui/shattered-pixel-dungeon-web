@@ -12,7 +12,7 @@ import org.json.JSONObject;
 public final class BuildWeb {
     public static void main(String[] args) throws Exception {
         File out=new File("web/build/dist");
-        new TeaCompiler(new WebBackend().setHtmlTitle("Pixel Dungeon "+WebVersion.NAME+" · Official-source Web Port").setStartJettyAfterBuild(false))
+        new TeaCompiler(new WebBackend().setHtmlTitle("破碎的像素地牢").setStartJettyAfterBuild(false))
             .addAssets(new AssetFileHandle("core/src/main/assets"))
             .addAssets(new AssetFileHandle("desktop/src/main/assets"))
             .addReflectionClass("com.shatteredpixel.shatteredpixeldungeon.**")

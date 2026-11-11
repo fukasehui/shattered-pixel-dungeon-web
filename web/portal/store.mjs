@@ -46,7 +46,7 @@ export function createStore(storage, engine) {
   let canWrite = () => true;
   let activeFloorKey=profile.dead?profile.deathFloorKey:null;
   const mutable=()=>{if(retired||!canWrite())throw new Error('当前页面已停止写入，请重新打开游戏。');};
-  function replaceAndRetire(next){mutable();const raw=JSON.stringify(validate(next));storage.setItem(CURRENT_KEY,raw);profile=next;dirty=false;retired=true;}
+  function replaceAndRetire(next,inPlace=false){mutable();const raw=JSON.stringify(validate(next));storage.setItem(CURRENT_KEY,raw);profile=next;dirty=false;retired=!inPlace;activeFloorKey=next.floorCheckpoint?.key??null;}
   const store = {
     get dead(){return !!profile.dead;},
     get checkpointDepth(){return profile.floorCheckpoint?.depth??null;},
@@ -86,14 +86,14 @@ export function createStore(storage, engine) {
       // A real death also establishes that the native engine restored the run.
       migrationPending=false;store.flush();
     },
-    retryFloor(){
+    retryFloor({inPlace=false}={}){
       if(!store.canRetry)throw new Error('没有可用的本层检查点，请先导出存档。');
       const next={...clone(profile),files:{...profile.files,...profile.floorCheckpoint.files},dead:false};
-      delete next.deathFloorKey;replaceAndRetire(next);
+      delete next.deathFloorKey;replaceAndRetire(next,inPlace);
     },
-    endRun(){
+    endRun({inPlace=false}={}){
       const next=clone(profile);for(const p of Object.keys(next.files))if(p.startsWith('game1/'))delete next.files[p];
-      delete next.floorCheckpoint;delete next.deathFloorKey;delete next.dead;replaceAndRetire(next);
+      delete next.floorCheckpoint;delete next.deathFloorKey;delete next.dead;replaceAndRetire(next,inPlace);
     },
     install(input) {
       const imported = validate(input);
